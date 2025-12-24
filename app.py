@@ -5,6 +5,20 @@ import os
 
 app = Flask(__name__)
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+
+# 【重要】Renderなどのプロキシ下で動かすための設定
+# x_for=1 は "X-Forwarded-For ヘッダーを1階層分信頼する" という意味です
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+@app.route('/api/move', methods=['POST'])
+def move():
+    # これで自動的に本当のIPアドレスが取れるようになります
+    client_ip = request.remote_addr 
+    print(f"User IP: {client_ip}")
+    return "OK"
+
 # --- ゲームロジックとAIクラス (前回と同じ) ---
 
 class TicTacToeLogic:
@@ -85,16 +99,3 @@ if __name__ == '__main__':
     app.run(debug=True, port=5000)
 
 
-from werkzeug.middleware.proxy_fix import ProxyFix
-
-
-# 【重要】Renderなどのプロキシ下で動かすための設定
-# x_for=1 は "X-Forwarded-For ヘッダーを1階層分信頼する" という意味です
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
-
-@app.route('/api/move', methods=['POST'])
-def move():
-    # これで自動的に本当のIPアドレスが取れるようになります
-    client_ip = request.remote_addr 
-    print(f"User IP: {client_ip}")
-    return "OK"
