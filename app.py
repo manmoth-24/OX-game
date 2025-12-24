@@ -3,9 +3,9 @@ import pickle
 import random
 import os
 
-app = Flask(__name__)
-
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+app = Flask(__name__)
 
 
 # 【重要】Renderなどのプロキシ下で動かすための設定
