@@ -132,6 +132,7 @@ def train_agent(episodes=10000, filename="tictactoe_brain.pkl"):
                 elif game.winner == "Draw": reward = 0.5
             
             agent.learn(state, action, reward, next_state, next_moves)
+        print(f"\rエピソード {_ + 1} / {episodes}", end="")
             
     print("学習完了！")
     agent.save_brain(filename) # 学習が終わったら保存
@@ -147,7 +148,7 @@ def main():
         agent.load_brain(filename)
     else:
         # なければ学習して保存
-        agent = train_agent(10000, filename)
+        agent = train_agent(1000000, filename)
 
     # いざ対戦
     game = TicTacToe()
