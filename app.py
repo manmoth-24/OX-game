@@ -87,7 +87,6 @@ if __name__ == '__main__':
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-app = Flask(__name__)
 
 # 【重要】Renderなどのプロキシ下で動かすための設定
 # x_for=1 は "X-Forwarded-For ヘッダーを1階層分信頼する" という意味です
