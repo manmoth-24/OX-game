@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最強AI 〇×ゲーム (Web版)</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background-color: #f0f0f0; }
+        h1 { color: #333; }
+        .controls { margin-bottom: 20px; }
+        .board { 
+            display: grid; 
+            grid-template-columns: repeat(3, 100px); 
+            gap: 5px; 
+            margin: 0 auto; 
+            width: 310px; 
+        }
+        .cell {
+            width: 100px; height: 100px;
+            background-color: white; border: 2px solid #333;
+            font-size: 3rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .cell:hover { background-color: #eef; }
+        .cell.taken { cursor: default; }
+        .status { margin-top: 20px; font-size: 1.2rem; font-weight: bold; }
+        .win { color: red; } .lose { color: blue; } .draw { color: grey; }
+        button.reset { padding: 10px 20px; font-size: 1rem; margin-top: 15px; cursor: pointer;}
+    </style>
+</head>
+<body>
+
+    <h1>最強AIと対決 (Web版)</h1>
+
+    <div class="controls">
+        <label><input type="radio" name="order" value="first" checked onchange="resetGame()"> 人間が先攻 (〇)</label>
+        <label><input type="radio" name="order" value="second" onchange="resetGame()"> 人間が後攻 (×)</label>
+    </div>
+
+    <div class="board" id="board">
+        </div>
+
+    <div class="status" id="status">開始してください</div>
+    <button class="reset" onclick="resetGame()">リセット</button>
+
+    <script>
+        let board = Array(9).fill(" ");
+        let gameOver = false;
+        let userSymbol = "〇";
+        let aiSymbol = "×";
+        let isUserTurn = true;
+
+        const boardEl = document.getElementById('board');
+        const statusEl = document.getElementById('status');
+
+        // 盤面の初期化
+        function initBoard() {
+            boardEl.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                cell.onclick = () => userMove(i);
+                boardEl.appendChild(cell);
+            }
+        }
+
+        async function userMove(index) {
+            if (gameOver || board[index] !== " " || !isUserTurn) return;
+
+            // 1. 人間の描画
+            updateCell(index, userSymbol, "blue");
+            if (checkEnd()) return;
+
+            // 2. AIへ送信
+            isUserTurn = false;
+            statusEl.innerText = "AIが思考中...";
+            
+            try {
+                const response = await fetch('/api/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ board: board, aiSide: aiSymbol })
+                });
+                const data = await response.json();
+
+                if (data.move !== null) {
+                    // 少し間を持たせる演出
+                    setTimeout(() => {
+                        updateCell(data.move, aiSymbol, "red");
+                        isUserTurn = true;
+                        if (!checkEnd()) statusEl.innerText = "あなたの番です";
+                    }, 400);
+                } else {
+                    isUserTurn = true;
+                    checkEnd();
+                }
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function updateCell(index, symbol, color) {
+            board[index] = symbol;
+            const cell = boardEl.children[index];
+            cell.innerText = symbol;
+            cell.style.color = color;
+            cell.classList.add('taken');
+        }
+
+        function checkEnd() {
+            const winner = getWinner();
+            if (winner) {
+                gameOver = true;
+                if (winner === userSymbol) {
+                    statusEl.innerText = "あなたの勝ちです！";
+                    statusEl.className = "status win";
+                } else {
+                    statusEl.innerText = "AIの勝ちです...";
+                    statusEl.className = "status lose";
+                }
+                return true;
+            }
+            if (!board.includes(" ")) {
+                gameOver = true;
+                statusEl.innerText = "引き分けです";
+                statusEl.className = "status draw";
+                return true;
+            }
+            return false;
+        }
+
+        function getWinner() {
+            const lines = [
+                [0,1,2],[3,4,5],[6,7,8],
+                [0,3,6],[1,4,7],[2,5,8],
+                [0,4,8],[2,4,6]
+            ];
+            for (let line of lines) {
+                const [a,b,c] = line;
+                if (board[a] !== " " && board[a] === board[b] && board[a] === board[c]) {
+                    return board[a];
+                }
+            }
+            return null;
+        }
+
+        function resetGame() {
+            board = Array(9).fill(" ");
+            gameOver = false;
+            statusEl.innerText = "あなたの番です";
+            statusEl.className = "status";
+            initBoard();
+
+            const order = document.querySelector('input[name="order"]:checked').value;
+            if (order === "first") {
+                userSymbol = "〇"; aiSymbol = "×";
+                isUserTurn = true;
+            } else {
+                userSymbol = "×"; aiSymbol = "〇";
+                isUserTurn = false;
+                statusEl.innerText = "AIの番です...";
+                // 後攻ならAIに初手を打たせる
+                setTimeout(async () => {
+                    const response = await fetch('/api/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ board: board, aiSide: aiSymbol })
+                    });
+                    const data = await response.json();
+                    if(data.move !== null) {
+                        updateCell(data.move, aiSymbol, "red");
+                        isUserTurn = true;
+                        statusEl.innerText = "あなたの番です";
+                    }
+                }, 500);
+            }
+        }
+
+        // 初回実行
+        initBoard();
+    </script>
+</body>
+</html>
