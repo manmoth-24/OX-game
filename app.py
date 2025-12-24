@@ -98,3 +98,4 @@ def move():
     client_ip = request.remote_addr 
     print(f"User IP: {client_ip}")
     return "OK"
+move();
